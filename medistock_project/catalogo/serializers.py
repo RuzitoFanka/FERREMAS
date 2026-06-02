@@ -9,10 +9,23 @@ class BodegaStockSerializer(serializers.ModelSerializer):
         fields = ['nombre_bodega', 'stock']
 
 class ProductoStockSerializer(serializers.ModelSerializer):
-   
-    bodegas = BodegaStockSerializer(many=True, source='existencias', read_only=True)
-    disponible = serializers.BooleanField(source='tiene_stock', read_only=True)
+    bodegas = BodegaStockSerializer(source='existencias', many=True, read_only=True)
+
+    disponible = serializers.SerializerMethodField()
 
     class Meta:
         model = Producto
-        fields = ['codigo_producto', 'nombre', 'descripcion', 'precio_unitario', 'stock_total', 'bodegas', 'disponible']
+        fields = [
+            'codigo_producto', 
+            'nombre', 
+            'descripcion', 
+            'precio_unitario', 
+            'stock_total', 
+            'stock_minimo',  
+            'bodegas', 
+            'disponible'
+        ]
+
+    def get_disponible(self, obj):
+     
+        return obj.stock_total > 0

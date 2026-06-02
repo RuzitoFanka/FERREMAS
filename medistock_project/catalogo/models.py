@@ -1,39 +1,37 @@
 from django.db import models
 
+class Bodega(models.Model):
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.nombre
+
 class Producto(models.Model):
-    codigo_producto = models.CharField(max_length=50, unique=True, verbose_name="Código Crítico (SKU)")
-    nombre = models.CharField(max_length=200)
-    descripcion = models.TextField(blank=True, null=True)
+    codigo_producto = models.CharField(max_length=50, unique=True)
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(blank=True)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
-    creado_en = models.DateTimeField(auto_now_add=True)
+    
+    # 🌟 Nuevo Campo para las alertas de reabastecimiento
+    stock_minimo = models.PositiveIntegerField(default=100)
 
     def __str__(self):
         return f"{self.codigo_producto} - {self.nombre}"
 
     @property
     def stock_total(self):
+        # Suma automática del stock en todas las bodegas
         return sum(item.stock for item in self.existencias.all())
 
     @property
-    def tiene_stock(self):
-        return self.stock_total > 0
-
-
-class Bodega(models.Model):
-    nombre = models.CharField(max_length=100, unique=True)
-    ubicacion = models.CharField(max_length=200, blank=True, null=True)
-
-    def __str__(self):
-        return self.nombre
-
+    def requiere_reabastecimiento(self):
+        # Si el stock total es menor o igual al mínimo, se gatilla la alerta
+        return self.stock_total <= self.stock_minimo
 
 class BodegaStock(models.Model):
-    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="existencias")
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='existencias')
     bodega = models.ForeignKey(Bodega, on_delete=models.CASCADE)
-    stock = models.IntegerField(default=0)
+    stock = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ('producto', 'bodega')
-
-    def __str__(self):
-        return f"{self.producto.nombre} en {self.bodega.nombre}: {self.stock} unidades"

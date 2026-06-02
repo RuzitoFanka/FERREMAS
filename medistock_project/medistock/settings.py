@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-77w#^d7!*hz*10xo90*2clzo5r14w-1rfq8uqz^1fmb3(9rig(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['medistock.local', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'usuarios',
     'catalogo',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -124,3 +125,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}

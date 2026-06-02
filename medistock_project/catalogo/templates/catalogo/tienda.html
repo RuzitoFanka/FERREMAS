@@ -1,0 +1,249 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediStock Portal</title>
+    <link rel="stylesheet" href="{% static 'catalogo/style.css' %}">
+</head>
+<body>
+
+    <header class="navbar-custom">
+        <a href="/" class="navbar-brand-link" title="Volver al Inicio">
+            <div class="navbar-brand">MediStock Portal</div>
+        </a>
+        <input type="text" class="search-bar" placeholder="¿Qué estás buscando?">
+        
+        <div class="top-info-container">
+            <div class="top-info">📍 Módulos de Adquisición Centralizados</div>
+            
+            <button class="header-cart-btn" onclick="toggleCartPanel()" title="Ver Carrito de Suministros">
+                👜 
+                <span class="header-cart-badge" id="cartCount">0</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <aside class="sidebar">
+            <div class="filter-group bio-special">
+                <div class="filter-header" onclick="toggleFiltro(this)">
+                    <span>Bioequivalente</span>
+                    <span class="filter-arrow">▲</span>
+                </div>
+                <div class="filter-content">
+                    <ul class="filter-list">
+                        <li class="filter-option"><input type="checkbox"> Sí</li>
+                        <li class="filter-option"><input type="checkbox"> No</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-header" onclick="toggleFiltro(this)">
+                    <span>Departamento</span>
+                    <span class="filter-arrow">▲</span>
+                </div>
+                <div class="filter-content">
+                    <ul class="filter-list">
+                        <li class="filter-option"><input type="checkbox"> Vitaminas y Suplementos</li>
+                        <li class="filter-option"><input type="checkbox"> Medicamentos</li>
+                        <li class="filter-option"><input type="checkbox"> Simi Lovers</li>
+                        <li class="filter-option"><input type="checkbox"> Belleza</li>
+                        <li class="filter-option"><input type="checkbox"> Cuidado Personal</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-header" onclick="toggleFiltro(this)">
+                    <span>Categoría</span>
+                    <span class="filter-arrow">▲</span>
+                </div>
+                <div class="filter-content">
+                    <ul class="filter-list">
+                        <li class="filter-option"><input type="checkbox"> Suplementos</li>
+                        <li class="filter-option"><input type="checkbox"> Bienestar</li>
+                        <li class="filter-option"><input type="checkbox"> Vitaminas</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="filter-group">
+                <div class="filter-header" onclick="toggleFiltro(this)">
+                    <span>Atributo</span>
+                    <span class="filter-arrow">▲</span>
+                </div>
+                <div class="filter-content">
+                    <ul class="filter-list">
+                        <li class="filter-option"><input type="checkbox"> Adulto Mayor</li>
+                        <li class="filter-option"><input type="checkbox"> Anticonceptivos</li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <section class="content-products">
+            <div class="content-header">Inventario activo sincronizado con el catálogo general comercial.</div>
+            
+            <div class="grid-products">
+                {% for prod in productos %}
+                <div class="product-card">
+                    <div class="product-img">💊</div>
+                    <h3 class="product-name">{{ prod.nombre }}</h3>
+                    <div class="product-sku">SKU: {{ prod.codigo_producto }} | Stock: {{ prod.stock_total }} un.</div>
+                    <div class="product-price">${{ prod.precio_unitario }}</div>
+                    
+                    <div class="product-actions">
+                        <div class="quantity-selector">
+                            <button class="quantity-btn" onclick="cambiarCantidad(this, -1)">-</button>
+                            <input type="text" class="quantity-input" value="1" readonly>
+                            <button class="quantity-btn" onclick="cambiarCantidad(this, 1)">+</button>
+                        </div>
+                        <button class="btn-buy" onclick="agregarAlCarrito('{{ prod.id }}', '{{ prod.nombre }}', {{ prod.precio_unitario }}, this)">AGREGAR +</button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert-info">No se registran productos en el catálogo comercial actual.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3>Carrito de Compras</h3>
+            <button class="close-cart" onclick="toggleCartPanel()">×</button>
+        </div>
+        
+        <ul class="cart-items-list" id="cartItemsContainer">
+            </ul>
+
+        <div class="cart-footer">
+            <div class="cart-total-row">
+                <span>Monto Total:</span>
+                <span id="cartTotalVal">$0</span>
+            </div>
+            <button class="btn-checkout" onclick="procesarCompraCarrito()">Generar Orden de Compra</button>
+        </div>
+    </div>
+
+    <script>
+        let carrito = [];
+
+        function toggleFiltro(header) {
+            header.parentElement.classList.toggle('closed');
+        }
+
+        function cambiarCantidad(btn, cambio) {
+            const contenedor = btn.parentElement;
+            const input = contenedor.querySelector('.quantity-input');
+            let valorActual = parseInt(input.value);
+            valorActual += cambio;
+            if (valorActual < 1) valorActual = 1;
+            input.value = valorActual;
+        }
+
+        function toggleCartPanel() {
+            document.getElementById('cartSidebar').classList.toggle('open');
+        }
+
+        function agregarAlCarrito(id, nombre, precio, boton) {
+            const card = boton.closest('.product-card');
+            const cantidad = parseInt(card.querySelector('.quantity-input').value);
+
+            const existe = carrito.find(item => item.id === id);
+            if (existe) {
+                existe.cantidad += cantidad;
+            } else {
+                carrito.push({ id, nombre, precio, cantidad });
+            }
+
+
+            card.querySelector('.quantity-input').value = 1;
+
+            actualizarInterfazCarrito();
+            
+  
+            document.getElementById('cartSidebar').classList.add('open');
+        }
+
+        function eliminarDelCarrito(id) {
+            carrito = carrito.filter(item => item.id !== id);
+            actualizarInterfazCarrito();
+        }
+
+        function actualizarInterfazCarrito() {
+            const container = document.getElementById('cartItemsContainer');
+            const cartCount = document.getElementById('cartCount');
+            const cartTotalVal = document.getElementById('cartTotalVal');
+            
+            container.innerHTML = '';
+            let totalAcumulado = 0;
+            let totalUnidades = 0;
+
+            carrito.forEach(item => {
+                const subtotal = item.precio * item.cantidad;
+                totalAcumulado += subtotal;
+                totalUnidades += item.cantidad;
+
+                const li = document.createElement('li');
+                li.className = 'cart-item';
+                li.innerHTML = `
+                    <div class="cart-item-details">
+                        <h4>${item.nombre}</h4>
+                        <p>${item.cantidad} un. x $${item.precio}</p>
+                    </div>
+                    <div>
+                        <span style="font-weight:bold; margin-right:10px;">$${subtotal}</span>
+                        <button class="remove-item-btn" onclick="eliminarDelCarrito('${item.id}')">Eliminar</button>
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+
+            cartCount.textContent = totalUnidades;
+            cartTotalVal.textContent = `$${totalAcumulado}`;
+        }
+
+        function procesarCompraCarrito() {
+            if (carrito.length === 0) {
+                alert("El carrito está vacío. Añade insumos antes de continuar.");
+                return;
+            }
+
+            const totalTexto = document.getElementById('cartTotalVal').textContent;
+            const montoFinal = totalTexto.replace('$', '');
+            
+            fetch('/api/v1/pagos/procesar/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ monto: montoFinal, productos: carrito })
+            })
+            .then(res => res.json())
+            .then(pagoData => {
+                if(pagoData.status === "APPROVED") {
+                    alert("💳 Pasarela Autorizada.\nCódigo de Operación: " + pagoData.authorization_code + "\nTotal Transaccionado: " + totalTexto);
+                    return fetch('/api/v1/logistica/tracking/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pedido_id: "LOT-" + Math.floor(Math.random() * 90000), comuna_destino: "Santiago" })
+                    });
+                } else {
+                    throw new Error("Transacción Declinada.");
+                }
+            })
+            .then(res => res.json())
+            .then(logisticaData => {
+                alert("📦 ¡Despacho agendado!\nSeguimiento: " + logisticaData.numero_seguimiento);
+                carrito = [];
+                actualizarInterfazCarrito();
+                toggleCartPanel();
+            })
+            .catch(err => alert("Error en los servicios de validación bancaria."));
+        }
+    </script>
+</body>
+</html>

@@ -5,7 +5,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediStock Portal</title>
-    <link rel="stylesheet" href="{% static 'catalogo/style.css' %}">
+    <link rel="stylesheet" href="{% static 'catalogo/style.css' %}?v=1.3">
+    
+    <style>
+        .filter-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        /* Estilo base para checkbox y los nuevos radio botones */
+        .filter-option input[type="checkbox"],
+        .filter-option input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #cbd5e0;
+            border-radius: 50%; /* Los vuelve perfectamente redondos */
+            margin-right: 12px;
+            outline: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        /* Efecto seleccionado: Fondo azul oscuro con anillo blanco interno */
+        .filter-option input[type="checkbox"]:checked,
+        .filter-option input[type="radio"]:checked {
+            border-color: #003399;
+            background-color: #003399;
+            box-shadow: inset 0 0 0 3px #fff;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
 
@@ -28,6 +70,7 @@
     <div class="main-container">
         
         <aside class="sidebar">
+            
             <div class="filter-group bio-special">
                 <div class="filter-header" onclick="toggleFiltro(this)">
                     <span>Bioequivalente</span>
@@ -35,8 +78,14 @@
                 </div>
                 <div class="filter-content">
                     <ul class="filter-list">
-                        <li class="filter-option"><input type="checkbox"> Sí</li>
-                        <li class="filter-option"><input type="checkbox"> No</li>
+                        <li class="filter-option">
+                            <input type="radio" name="bioequivalente" id="bio_si">
+                            <label for="bio_si">Sí</label>
+                        </li>
+                        <li class="filter-option">
+                            <input type="radio" name="bioequivalente" id="bio_no">
+                            <label for="bio_no">No</label>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -48,38 +97,11 @@
                 </div>
                 <div class="filter-content">
                     <ul class="filter-list">
-                        <li class="filter-option"><input type="checkbox"> Vitaminas y Suplementos</li>
-                        <li class="filter-option"><input type="checkbox"> Medicamentos</li>
-                        <li class="filter-option"><input type="checkbox"> Simi Lovers</li>
-                        <li class="filter-option"><input type="checkbox"> Belleza</li>
-                        <li class="filter-option"><input type="checkbox"> Cuidado Personal</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header" onclick="toggleFiltro(this)">
-                    <span>Categoría</span>
-                    <span class="filter-arrow">▲</span>
-                </div>
-                <div class="filter-content">
-                    <ul class="filter-list">
-                        <li class="filter-option"><input type="checkbox"> Suplementos</li>
-                        <li class="filter-option"><input type="checkbox"> Bienestar</li>
-                        <li class="filter-option"><input type="checkbox"> Vitaminas</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="filter-group">
-                <div class="filter-header" onclick="toggleFiltro(this)">
-                    <span>Atributo</span>
-                    <span class="filter-arrow">▲</span>
-                </div>
-                <div class="filter-content">
-                    <ul class="filter-list">
-                        <li class="filter-option"><input type="checkbox"> Adulto Mayor</li>
-                        <li class="filter-option"><input type="checkbox"> Anticonceptivos</li>
+                        <li class="filter-option"><input type="checkbox" id="dep_vit"><label for="dep_vit">Vitaminas y Suplementos</label></li>
+                        <li class="filter-option"><input type="checkbox" id="dep_med"><label for="dep_med">Medicamentos</label></li>
+                        <li class="filter-option"><input type="checkbox" id="dep_sim"><label for="dep_sim">Simi Lovers</label></li>
+                        <li class="filter-option"><input type="checkbox" id="dep_bel"><label for="dep_bel">Belleza</label></li>
+                        <li class="filter-option"><input type="checkbox" id="dep_cui"><label for="dep_cui">Cuidado Personal</label></li>
                     </ul>
                 </div>
             </div>
@@ -91,7 +113,15 @@
             <div class="grid-products">
                 {% for prod in productos %}
                 <div class="product-card">
-                    <div class="product-img">💊</div>
+                    
+                    <div class="product-img" style="width: 100%; height: 160px; display: flex; align-items: center; justify-content: center; background: #fff; margin-bottom: 15px;">
+                        {% if prod.imagen %}
+                            <img src="{{ prod.imagen.url }}" alt="{{ prod.nombre }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        {% else %}
+                            <span style="font-size: 55px;">💊</span>
+                        {% endif %}
+                    </div>
+
                     <h3 class="product-name">{{ prod.nombre }}</h3>
                     <div class="product-sku">SKU: {{ prod.codigo_producto }} | Stock: {{ prod.stock_total }} un.</div>
                     <div class="product-price">${{ prod.precio_unitario }}</div>
@@ -114,7 +144,7 @@
 
     <div class="cart-sidebar" id="cartSidebar">
         <div class="cart-header">
-            <h3>Carrito de Compras</h3>
+            <h3>Pedido de Suministros</h3>
             <button class="close-cart" onclick="toggleCartPanel()">×</button>
         </div>
         
@@ -161,12 +191,8 @@
                 carrito.push({ id, nombre, precio, cantidad });
             }
 
-
             card.querySelector('.quantity-input').value = 1;
-
             actualizarInterfazCarrito();
-            
-  
             document.getElementById('cartSidebar').classList.add('open');
         }
 
@@ -210,39 +236,13 @@
 
         function procesarCompraCarrito() {
             if (carrito.length === 0) {
-                alert("El carrito está vacío. Añade insumos antes de continuar.");
+                alert("El carrito está vacío.");
                 return;
             }
-
-            const totalTexto = document.getElementById('cartTotalVal').textContent;
-            const montoFinal = totalTexto.replace('$', '');
-            
-            fetch('/api/v1/pagos/procesar/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ monto: montoFinal, productos: carrito })
-            })
-            .then(res => res.json())
-            .then(pagoData => {
-                if(pagoData.status === "APPROVED") {
-                    alert("💳 Pasarela Autorizada.\nCódigo de Operación: " + pagoData.authorization_code + "\nTotal Transaccionado: " + totalTexto);
-                    return fetch('/api/v1/logistica/tracking/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pedido_id: "LOT-" + Math.floor(Math.random() * 90000), comuna_destino: "Santiago" })
-                    });
-                } else {
-                    throw new Error("Transacción Declinada.");
-                }
-            })
-            .then(res => res.json())
-            .then(logisticaData => {
-                alert("📦 ¡Despacho agendado!\nSeguimiento: " + logisticaData.numero_seguimiento);
-                carrito = [];
-                actualizarInterfazCarrito();
-                toggleCartPanel();
-            })
-            .catch(err => alert("Error en los servicios de validación bancaria."));
+            alert("Orden de compra generada de forma exitosa.");
+            carrito = [];
+            actualizarInterfazCarrito();
+            toggleCartPanel();
         }
     </script>
 </body>

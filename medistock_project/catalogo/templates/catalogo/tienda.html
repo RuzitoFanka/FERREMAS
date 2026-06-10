@@ -16,7 +16,7 @@
         <input type="text" class="search-bar" placeholder="¿Qué estás buscando?">
         
         <div class="top-info-container">
-            <div class="top-info">📍 Módulos de Adquisición Centralizados</div>
+            <div class="top-info"> Módulos de Adquisición Centralizados</div>
             
             <button class="header-cart-btn" onclick="toggleCartPanel()" title="Ver Carrito de Suministros">
                 👜 
@@ -26,7 +26,6 @@
     </header>
 
     <div class="main-container">
-        
         <aside class="sidebar">
             <div class="filter-group bio-special">
                 <div class="filter-header" onclick="toggleFiltro(this)">
@@ -78,9 +77,7 @@
                                 <span style="font-size: 60px;">💊</span>
                             {% endif %}
                         </div>
-
                         <div class="product-brand">MediStock Corp</div>
-                        
                         <h3 class="product-name" title="{{ prod.nombre }}">{{ prod.nombre }}</h3>
                     </div>
 
@@ -99,13 +96,19 @@
                         
                         <div class="product-actions">
                             <div class="quantity-selector">
-                                <button class="quantity-btn" onclick="cambiarCantidad(this, -1)">-</button>
+                                <button class="quantity-btn" onclick="cambiarCantidad(this, -1, {{ prod.stock_total }})">-</button>
                                 <input type="text" class="quantity-input" value="1" readonly>
-                                <button class="quantity-btn" onclick="cambiarCantidad(this, 1)">+</button>
+                                <button class="quantity-btn" onclick="cambiarCantidad(this, 1, {{ prod.stock_total }})">+</button>
                             </div>
-                            <button class="btn-buy" onclick="agregarAlCarrito('{{ prod.id }}', '{{ prod.nombre }}', {{ prod.precio_unitario }}, this)">
+                            {% if prod.stock_total > 0 %}
+                            <button class="btn-buy" onclick="agregarAlCarrito('{{ prod.id }}', '{{ prod.nombre }}', '{{ prod.precio_unitario }}', {{ prod.stock_total }}, this)">
                                 Agregar 🛒
                             </button>
+                            {% else %}
+                            <button class="btn-buy" style="background-color: #a0aec0 !important; cursor: not-allowed;" onclick="agregarAlCarrito('{{ prod.id }}', '{{ prod.nombre }}', 0, this)">
+                                Agotado 🚫
+                            </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -116,108 +119,115 @@
         </section>
     </div>
 
-    <div class="cart-sidebar" id="cartSidebar">
-        <div class="cart-header">
-            <h3>Pedido de Suministros</h3>
-            <button class="close-cart" onclick="toggleCartPanel()">×</button>
+    <div class="cart-sidebar" id="cartSidebar" style="position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: #fcfaf6; box-shadow: -2px 0 15px rgba(0,0,0,0.15); transition: right 0.3s ease; z-index: 1000; padding: 0; display: flex; flex-direction: column;">
+        <div class="cart-header" style="display: flex; justify-content: space-between; align-items: center; color: #1a202c; background-color: #9ad1f5; padding: 20px;">
+            <h3 style="margin: 0; font-weight: bold; font-size: 18px;">Pedido de Suministros</h3>
+            <button class="close-cart" onclick="toggleCartPanel()" style="background: none; border: none; color: #1a202c; font-size: 24px; cursor: pointer; font-weight: bold;">×</button>
         </div>
         
-        <ul class="cart-items-list" id="cartItemsContainer">
+        <ul class="cart-items-list" id="cartItemsContainer" style="list-style: none; padding: 0 20px; margin: 20px 0 0 0; flex-grow: 1; overflow-y: auto;">
             </ul>
 
-        <div class="cart-footer">
-            <div class="cart-total-row">
+        <div class="cart-footer" style="background-color: #f0f7fc; padding: 20px; color: #1a202c; border-top: 1px solid #e2e8f0;">
+            <div class="cart-total-row" style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
                 <span>Monto Total:</span>
-                <span id="cartTotalVal">$0</span>
+                <span id="cartTotalVal" style="color: #1a202c;">$0</span>
             </div>
-            <button class="btn-checkout" onclick="procesarCompraCarrito()">Generar Orden de Compra</button>
+            <button class="btn-checkout" onclick="procesarCompraCarrito()" style="width: 100%; padding: 14px; background: #48bb78; border: 1px solid #38a169; color: white; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase;">Generar Orden de Compra</button>
         </div>
     </div>
 
     <script>
-        let carrito = [];
+        let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
 
-        function toggleFiltro(header) {
-            header.parentElement.classList.toggle('closed');
+        document.addEventListener("DOMContentLoaded", () => {
+            actualizarInterfazCarrito();
+        });
+
+        function toggleCartPanel() {
+            const sidebar = document.getElementById('cartSidebar');
+            if (sidebar) {
+                sidebar.style.right = (sidebar.style.right === "0px") ? "-400px" : "0px";
+            }
         }
 
-        function cambiarCantidad(btn, cambio) {
+        function cambiarCantidad(btn, cambio, stockMaximo) {
             const contenedor = btn.parentElement;
             const input = contenedor.querySelector('.quantity-input');
-            let valorActual = parseInt(input.value);
-            valorActual += cambio;
+            let valorActual = parseInt(input.value) + cambio;
             if (valorActual < 1) valorActual = 1;
+            if (valorActual > stockMaximo) {
+                alert(`Atención: Solo quedan ${stockMaximo} unidades disponibles.`);
+                valorActual = stockMaximo;
+            }
             input.value = valorActual;
         }
 
-        function toggleCartPanel() {
-            document.getElementById('cartSidebar').classList.toggle('open');
-        }
-
-        function agregarAlCarrito(id, nombre, precio, boton) {
+        function agregarAlCarrito(id, nombre, precio, stockMaximo, boton) {
+            if (stockMaximo <= 0) return;
             const card = boton.closest('.product-card');
-            const cantidad = parseInt(card.querySelector('.quantity-input').value);
+            const cantidadInput = card.querySelector('.quantity-input');
+            const cantidad = parseInt(cantidadInput ? cantidadInput.value : 1);
 
             const existe = carrito.find(item => item.id === id);
-            if (existe) {
-                existe.cantidad += cantidad;
-                alert(`Se añadieron ${cantidad} unidades más de ${nombre} al pedido.`);
-            } else {
-                carrito.push({ id, nombre, precio, cantidad });
-                alert(`${nombre} añadido al pedido de suministros.`);
+            const cantidadEnCarrito = existe ? existe.cantidad : 0;
+
+            if (cantidadEnCarrito + cantidad > stockMaximo) {
+                alert(`Error: El stock máximo en bodegas es de ${stockMaximo} un.`);
+                return;
             }
 
-            card.querySelector('.quantity-input').value = 1;
+            if (existe) {
+                existe.cantidad += cantidad;
+            } else {
+                let precioLimpio = parseFloat(String(precio).replace(',', '.'));
+                carrito.push({ id, nombre, precio: precioLimpio, cantidad });
+            }
+            if(cantidadInput) cantidadInput.value = 1;
             actualizarInterfazCarrito();
-        }
-
-        function eliminarDelCarrito(id) {
-            carrito = carrito.filter(item => item.id !== id);
-            actualizarInterfazCarrito();
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            alert(`"${nombre}" añadido al pedido.`);
         }
 
         function actualizarInterfazCarrito() {
-            const container = document.getElementById('cartItemsContainer');
-            const cartCount = document.getElementById('cartCount');
-            const cartTotalVal = document.getElementById('cartTotalVal');
+            const contenedorItems = document.getElementById('cartItemsContainer');
+            const badgeContador = document.getElementById('cartCount');
+            const totalSuma = document.getElementById('cartTotalVal');
+            if (!contenedorItems) return;
             
-            container.innerHTML = '';
-            let totalAcumulado = 0;
-            let totalUnidades = 0;
+            contenedorItems.innerHTML = '';
+            let unidadesTotales = 0;
+            let costoTotal = 0;
 
-            carrito.forEach(item => {
-                const subtotal = item.precio * item.cantidad;
-                totalAcumulado += subtotal;
-                totalUnidades += item.cantidad;
-
+            carrito.forEach((item) => {
+                unidadesTotales += item.cantidad;
+                costoTotal += (item.precio * item.cantidad);
                 const li = document.createElement('li');
-                li.className = 'cart-item';
+                li.style.padding = "12px 0";
+                li.style.borderBottom = "1px solid #e2e8f0";
                 li.innerHTML = `
-                    <div class="cart-item-details">
-                        <h4>${item.nombre}</h4>
-                        <p>${item.cantidad} un. x $${item.precio}</p>
-                    </div>
-                    <div>
-                        <span style="font-weight:bold; margin-right:10px;">$${subtotal}</span>
-                        <button class="remove-item-btn" onclick="eliminarDelCarrito('${item.id}')">Eliminar</button>
-                    </div>
-                `;
-                container.appendChild(li);
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; align-items: center;">
+                        <span><strong>${item.nombre}</strong><br><small style="color: #718096;">Cant: ${item.cantidad}</small></span>
+                        <span style="font-weight: bold; color: #2d3748;">$${(item.precio * item.cantidad).toFixed(0)}</span>
+                    </div>`;
+                contenedorItems.appendChild(li);
             });
-
-            cartCount.textContent = totalUnidades;
-            cartTotalVal.textContent = `$${totalAcumulado}`;
+            if (badgeContador) badgeContador.innerText = unidadesTotales;
+            if (totalSuma) totalSuma.innerText = `$${costoTotal.toFixed(0)}`;
         }
 
+        // SEPARA LA LÓGICA: Esta función ahora solo salta al segundo archivo resumen
         function procesarCompraCarrito() {
             if (carrito.length === 0) {
                 alert("El carrito está vacío.");
                 return;
             }
-            alert("Orden de compra generada de forma exitosa.");
-            carrito = [];
-            actualizarInterfazCarrito();
-            toggleCartPanel();
+            window.location.href = '/resumen-orden/';
+        }
+
+        function toggleFiltro(elemento) {
+            const contenido = elemento.nextElementSibling;
+            contenido.style.display = (contenido.style.display === "none") ? "block" : "none";
         }
     </script>
 </body>

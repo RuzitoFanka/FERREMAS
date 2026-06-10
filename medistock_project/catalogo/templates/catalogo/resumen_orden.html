@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediStock Portal - Resumen de Orden</title>
+    <link rel="stylesheet" href="{% static 'catalogo/style.css' %}?v=1.5">
+</head>
+<body style="background-color: #f7fafc; font-family: sans-serif; margin: 0; padding: 0;">
+
+    <header class="navbar-custom" style="background-color: #9ad1f5; padding: 20px; color: #1a202c; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; font-weight: bold;">MediStock Portal - Confirmación de Pedido</h2>
+        <a href="{% url 'pantalla-tienda' %}" style="text-decoration: none; color: #1a202c; font-weight: bold; background: white; padding: 8px 15px; border-radius: 4px; border: 1px solid #cbd5e0; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#f7fafc'" onmouseout="this.style.backgroundColor='white'">
+            ← Volver al Catálogo
+        </a>
+    </header>
+
+    <main style="max-width: 800px; margin: 40px auto; padding: 20px;">
+        <div style="background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 30px; border: 1px solid #e2e8f0;">
+            <h3 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0;">Detalle de los Insumos Solicitados</h3>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;">
+                <thead>
+                    <tr style="background-color: #f0f7fc; color: #2d3748; border-bottom: 2px solid #cbd5e0;">
+                        <th style="padding: 12px;">Producto</th>
+                        <th style="padding: 12px; text-align: center;">Cantidad</th>
+                        <th style="padding: 12px; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="listaResumenProductos">
+                    </tbody>
+            </table>
+
+            <div style="margin-top: 30px; background-color: #f0f7fc; padding: 20px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: bold; color: #1a202c; border: 1px solid #e2e8f0;">
+                <span>Total de la Orden:</span>
+                <span id="montoTotalOrden">$0</span>
+            </div>
+
+            <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+                {% csrf_token %}
+                <button onclick="confirmarYDescontarStock()" style="padding: 14px 30px; background-color: #48bb78; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-transform: uppercase;">
+                    Confirmar y Finalizar Adquisición
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const tablaBody = document.getElementById('listaResumenProductos');
+            const contenedorTotal = document.getElementById('montoTotalOrden');
+            if (carrito.length === 0) {
+                tablaBody.innerHTML = `<tr><td colspan="3" style="padding: 20px; text-align: center; color: #718096;">No hay productos registrados.</td></tr>`;
+                return;
+            }
+            let costoTotal = 0;
+            tablaBody.innerHTML = '';
+
+            carrito.forEach(item => {
+                const subtotal = item.precio * item.cantidad;
+                costoTotal += subtotal;
+                const fila = document.createElement('tr');
+                fila.style.borderBottom = "1px solid #e2e8f0";
+                fila.innerHTML = `
+                    <td style="padding: 15px; color: #2d3748;"><strong>${item.nombre}</strong></td>
+                    <td style="padding: 15px; text-align: center; color: #4a5568;">${item.cantidad} unidades</td>
+                    <td style="padding: 15px; text-align: right; font-weight: bold; color: #2d3748;">$${subtotal.toFixed(0)}</td>`;
+                tablaBody.appendChild(fila);
+            });
+            contenedorTotal.innerText = `$${costoTotal.toFixed(0)}`;
+        });
+
+        function confirmarYDescontarStock() {
+            if (carrito.length === 0) return;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch('/procesar-compra/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ items: carrito })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    alert("¡Pedido archivado con éxito! Inventario actualizado.");
+                    localStorage.removeItem('carrito'); 
+                    window.location.href = '/';
+                } else {
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

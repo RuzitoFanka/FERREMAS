@@ -1,72 +1,79 @@
-import random
-import requests
-from django.shortcuts import get_object_or_404, render
-from rest_framework import status
-from rest_framework.response import Response
+import json
+from django.http import JsonResponse
+from django.shortcuts import render
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Producto, BodegaStock
 
-from .models import Producto
-from .serializers import ProductoStockSerializer
-
+# =========================================================================
+# VISTAS DE LAS APIs REST FRAMEWORK
+# =========================================================================
 
 class ConsultaStockAPIView(APIView):
     def get(self, request, codigo_producto):
-        producto = get_object_or_404(Producto, codigo_producto=codigo_producto)
-        alerta_pedido = False
-        
-        if producto.requiere_reabastecimiento:
-            alerta_pedido = True
-            try:
-                payload = {"sku": producto.codigo_producto, "cantidad_automatica": 500}
-                requests.post("https://httpbin.org/post", json=payload, timeout=3)
-            except requests.exceptions.RequestException:
-                pass
-
-        serializer = ProductoStockSerializer(producto)
-        data_respuesta = serializer.data
-        data_respuesta['stock_minimo_requerido'] = producto.stock_minimo
-        data_respuesta['alerta_reabastecimiento_automatica'] = alerta_pedido
-        return Response(data_respuesta, status=status.HTTP_200_OK)
-
+        try:
+            producto = Producto.objects.get(codigo_producto=codigo_producto)
+            return Response({'codigo': producto.codigo_producto, 'stock': producto.stock_total}, status=status.HTTP_200_OK)
+        except Producto.DoesNotExist:
+            return Response({'error': 'Producto no encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
 class ProcesarPagoAPIView(APIView):
     def post(self, request):
-        monto = request.data.get("monto")
-        producto_id = request.data.get("producto_id")
-        if not monto or not producto_id:
-            return Response({"error": "Parámetros de conciliación ausentes"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = {"amount": float(monto), "currency": "CLP"}
-            response = requests.post("https://httpbin.org/post", json=payload, timeout=3)
-            if response.status_code == 200:
-                return Response({
-                    "status": "APPROVED",
-                    "authorization_code": f"AUTH-{random.randint(100000, 999999)}",
-                    "monto_procesado": monto
-                }, status=status.HTTP_200_OK)
-        except requests.exceptions.RequestException:
-            return Response({"error": "Servicio de adquirencia no disponible"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
+        return Response({'status': 'pago aprobado'}, status=status.HTTP_200_OK)
 
 class GenerarTrackingAPIView(APIView):
     def post(self, request):
-        pedido_id = request.data.get("pedido_id")
-        comuna_destino = request.data.get("comuna_destino")
-        if not pedido_id or not comuna_destino:
-            return Response({"error": "Parámetros de distribución incorrectos"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = {"carrier": "CHILEXPRESS", "destination": comuna_destino}
-            response = requests.post("https://httpbin.org/post", json=payload, timeout=3)
-            if response.status_code == 200:
-                return Response({
-                    "proveedor_logistica": "Chilexpress S.A.",
-                    "numero_seguimiento": f"CHI-{random.randint(10000000, 99999999)}",
-                    "estado_envio": "Confirmado - En centro de distribución"
-                }, status=status.HTTP_201_CREATED)
-        except requests.exceptions.RequestException:
-            return Response({"error": "Gateway de transportista fuera de línea"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'tracking_id': 'MS-123456'}, status=status.HTTP_200_OK)
 
+
+# =========================================================================
+# VISTAS DE LAS PÁGINAS WEB (TEMPLATES HTML)
+# =========================================================================
 
 def vista_tienda(request):
+    """ Muestra la tienda/catálogo comercial """
     productos = Producto.objects.all()
     return render(request, 'catalogo/tienda.html', {'productos': productos})
+
+
+def resumen_orden_view(request):
+    """ Muestra la nueva pantalla con la lista de productos agregados """
+    return render(request, 'catalogo/resumen_orden.html')
+
+
+def procesar_compra_view(request):
+    """ Ejecuta el descuento lógico real sobre las bodegas en la base de datos """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            items = data.get('items', [])
+
+            for item in items:
+                producto_id = item['id']
+                cantidad_comprada = int(item['cantidad'])
+                producto = Producto.objects.get(id=producto_id)
+                if producto.stock_total < cantidad_comprada:
+                    return JsonResponse({'status': 'error', 'message': f"El insumo '{producto.nombre}' no tiene suficiente stock."})
+
+            for item in items:
+                producto_id = item['id']
+                cantidad_comprada = int(item['cantidad'])
+                existencias_bodega = BodegaStock.objects.filter(producto_id=producto_id).order_by('-stock')
+                
+                por_descontar = cantidad_comprada
+                for registro in existencias_bodega:
+                    if registro.stock >= por_descontar:
+                        registro.stock -= por_descontar
+                        registro.save()
+                        break
+                    else:
+                        por_descontar -= registro.stock
+                        registro.stock = 0
+                        registro.save()
+
+            return JsonResponse({'status': 'ok'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+            
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=400)

@@ -1,0 +1,129 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediStock Portal – Confirmación de Pedido</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}?v=3.0">
+    <link rel="stylesheet" href="{% static 'resumen.css' %}?v=3.0">
+</head>
+<body>
+
+    <header class="navbar-confirmacion">
+        <a href="{% url 'pantalla-tienda' %}" class="navbar-brand-confirm">
+            ⚕️ MediStock Portal
+        </a>
+    </header>
+
+    <div class="page-wrapper-center">
+        
+        <div class="resumen-container">
+            <div class="header-orden">
+                <span style="font-size: 26px;">📋</span>
+                <h2>Detalle de los Insumos Solicitados</h2>
+            </div>
+            <p class="subtitulo-orden">Revise su orden de requerimiento antes del despacho final de almacén.</p>
+
+            <table class="tabla-resumen">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th style="text-align: center;">Cantidad</th>
+                        <th style="text-align: right;">Precio Unitario</th>
+                        <th style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTablaResumen">
+                    <tr id="filaVaciaMensaje">
+                        <td colspan="4" style="text-align: center; color: #64748b; padding: 50px 20px;">
+                            <span class="mensaje-vacio-box" style="font-size: 46px; display: block; margin-bottom: 12px;">📦</span>
+                            <span style="font-weight: 500; font-size: 15px; display: block; color: #94a3b8;">
+                                No se encontraron productos activos registrados en esta orden médica.
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
+
+            <div class="footer-orden">
+                <a href="{% url 'pantalla-tienda' %}" class="btn-volver">
+                    ← Volver al Catálogo
+                </a>
+                
+                <div class="acciones-derecha">
+                    <div class="total-row-display">
+                        <span class="total-label">Total de la Orden:</span>
+                        <span id="valorTotalOrden">$0</span>
+                    </div>
+                    <button class="btn-confirmar-final" onclick="mostrarModalConfirmacion()">
+                        <span>Confirmar Requerimiento Comercial</span> ✓
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            proyectarProductosDesdeCarrito();
+        });
+
+        function proyectarProductosDesdeCarrito() {
+            const tabla = document.getElementById('cuerpoTablaResumen');
+            const displayTotal = document.getElementById('valorTotalOrden');
+            const productosProyectados = JSON.parse(localStorage.getItem('ultimo_pedido')) || [];
+
+            if (productosProyectados.length === 0) return;
+
+            tabla.innerHTML = "";
+            let sumaFinal = 0;
+
+            productosProyectados.forEach(item => {
+                const totalPorProducto = item.precio * item.cantidad;
+                sumaFinal += totalPorProducto;
+
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td style="font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">${item.nombre}</td>
+                    <td style="text-align: center; font-weight: 700; color: #0284c7; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">
+                        <span style="background: #f0f9ff; padding: 4px 10px; border-radius: 6px;">${item.cantidad}</span>
+                    </td>
+                    <td style="text-align: right; border-bottom: 1px solid #f1f5f9; color: #475569; font-weight: 500; padding: 18px 20px;">$${item.precio.toFixed(0)}</td>
+                    <td style="text-align: right; font-weight: 700; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">$${totalPorProducto.toFixed(0)}</td>
+                `;
+                tabla.appendChild(fila);
+            });
+
+            if (displayTotal) {
+                displayTotal.innerText = `$${sumaFinal.toFixed(0)}`;
+            }
+        }
+
+        function mostrarModalConfirmacion() {
+            document.getElementById('customConfirmModal').classList.add('active');
+        }
+
+        function cerrarModalConfirmacion() {
+            document.getElementById('customConfirmModal').classList.remove('active');
+        }
+
+        function ejecutarDespachoBodega() {
+            cerrarModalConfirmacion();
+            
+            const toast = document.getElementById('toastNotification');
+            toast.classList.add('active');
+            
+            localStorage.removeItem('ultimo_pedido');
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+                window.location.href = "{% url 'pantalla-tienda' %}";
+            }, 2200);
+        }
+    </script>
+</body>
+</html>

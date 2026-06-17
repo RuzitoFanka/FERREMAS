@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.db import transaction
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from transbank.webpay.webpay_plus.transaction import Transaction
@@ -13,6 +14,59 @@ import random
 # =========================================================================
 # VISTAS DE LAS APIs REST FRAMEWORK (CON TRANSBANK INTEGRADO)
 # =========================================================================
+
+@api_view(['POST'])
+def procesar_despacho(request):
+    """
+    API consumida para procesar la orden.
+    Recibe el carrito, valida existencias y descuenta de manera atómica
+    tanto el stock global como por bodega.
+    """
+    items_pedido = request.data.get('productos', [])
+    
+    if not items_pedido:
+        return Response({'error': 'No hay artículos en el pedido.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        with transaction.atomic():
+            for item in items_pedido:
+                producto_id = item.get('id')
+                cantidad_comprada = int(item.get('cantidad'))
+                
+                producto = Producto.objects.select_for_update().get(id=producto_id)
+                
+                if producto.stock_total < cantidad_comprada:
+                    return Response({
+                        'error': f'Stock insuficiente para "{producto.nombre}". Disponible en sistema: {producto.stock_total} un.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                existencias_bodega = BodegaStock.objects.filter(producto_id=producto_id).order_by('-stock')
+                por_descontar = cantidad_comprada
+                
+                for registro in existencias_bodega:
+                    if registro.stock >= por_descontar:
+                        registro.stock -= por_descontar
+                        registro.save()
+                        por_descontar = 0
+                        break
+                    else:
+                        por_descontar -= registro.stock
+                        registro.stock = 0
+                        registro.save()
+                
+                if por_descontar > 0:
+                    raise Exception(f"Inconsistencia: No se pudo descontar el total de bodegas para {producto.nombre}")
+
+                producto.stock_total -= cantidad_comprada
+                producto.save()
+                
+        return Response({'message': 'Orden procesada con éxito y stock rebajado'}, status=status.HTTP_200_OK)
+        
+    except Producto.DoesNotExist:
+        return Response({'error': 'Uno de los insumos seleccionados no existe en el catálogo.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': f'Error en el servidor de inventario: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class ConsultaStockAPIView(APIView):
     """ API para consultar las existencias de un producto mediante su código """
@@ -34,17 +88,13 @@ class ProcesarPagoAPIView(APIView):
             if not items:
                 return Response({'error': 'No hay insumos en el pedido'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Calcular el monto total acumulado del carrito
             monto_total = sum(float(item['precio']) * int(item['cantidad']) for item in items)
             
-            # Crear identificadores únicos requeridos por la pasarela
             buy_order = f"O-{random.randint(100000, 999999)}"
             session_id = f"S-{random.randint(100000, 999999)}"
-            
-            # URL de retorno al finalizar el flujo de Webpay
             return_url = "http://127.0.0.1:8000/" 
 
-            # Transacción en el ambiente de Webpay Plus
+            # CORRECCIÓN: Quitamos el return anticipado que rompía Transbank
             tx = Transaction()
             response = tx.create(buy_order, session_id, monto_total, return_url)
             
@@ -65,32 +115,31 @@ class GenerarTrackingAPIView(APIView):
 
 
 # =========================================================================
-# VISTAS DE LAS PÁGINAS WEB (TEMPLATES HTML)
+# VISTAS DE LAS PÁGINAS WEB (MAPPED CON TU ARCHIVO DE URLS.PY)
 # =========================================================================
 
-def vista_tienda(request):
-    """ Renderiza el catálogo principal de insumos médicos """
+def tienda(request):
+    """ Renderiza el catálogo principal pasándole los productos de la BD """ 
     productos = Producto.objects.all()
     return render(request, 'catalogo/tienda.html', {'productos': productos})
 
 
-def resumen_orden_view(request):
-    """ Muestra la pantalla resumen estructurada de la orden médica """
+def resumen_orden(request):
+    """ Muestra la pantalla resumen estructurada de la orden médica """ 
     return render(request, 'catalogo/resumen_orden.html')
 
 
 def login_view(request):
-    """ Módulo de Autenticación para operadores de MediStock """
+    """ Módulo de Autenticación para operadores """
     if request.method == 'POST':
         usuario = request.POST.get('username')
         clave = request.POST.get('password')
         
-        # Validación nativa contra la base de datos de usuarios de Django
         user = authenticate(request, username=usuario, password=clave)
         
         if user is not None:
             login(request, user)
-            return redirect('pantalla-tienda')  # Redirección exitosa al catálogo
+            return redirect('tienda')
         else:
             return render(request, 'catalogo/login.html', {
                 'error_message': 'Credenciales inválidas o usuario no autorizado.'
@@ -136,11 +185,8 @@ def procesar_compra_view(request):
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=400)
 
 
-# =========================================================================
-# 📉 ENLACE DE COMPRA DESDE EL CARRITO (REBAJA STOCK GLOBAL Y EN BODEGAS)
-# =========================================================================
 def procesar_pedido(request):
-    """ Recibe el carrito, valida existencias, y descuenta tanto el stock global como por bodega """
+    """ Endpoint tradicional para procesamiento síncrono desde template HTML """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -149,22 +195,18 @@ def procesar_pedido(request):
             if not items_pedido:
                 return JsonResponse({'error': 'No hay artículos en el pedido.'}, status=400)
             
-            # Bloque transaccional: Si algo falla con un producto, no se guarda nada (integridad total)
             with transaction.atomic():
                 for item in items_pedido:
                     producto_id = item.get('id')
                     cantidad_comprada = int(item.get('cantidad'))
                     
-                    # 1️⃣ Buscamos el Producto y bloqueamos la fila para evitar concurrencia
                     producto = Producto.objects.select_for_update().get(id=producto_id)
                     
-                    # Validación estricta en servidor antes de procesar el descuento
                     if producto.stock_total < cantidad_comprada:
                         return JsonResponse({
                             'error': f'Stock insuficiente para "{producto.nombre}". Disponible en sistema: {producto.stock_total} un.'
                         }, status=400)
                     
-                    # 2️⃣ DESCUENTO EN BODEGAS FÍSICAS (BodegaStock) - De mayor a menor stock
                     existencias_bodega = BodegaStock.objects.filter(producto_id=producto_id).order_by('-stock')
                     por_descontar = cantidad_comprada
                     
@@ -182,7 +224,6 @@ def procesar_pedido(request):
                     if por_descontar > 0:
                         raise Exception(f"Inconsistencia: No se pudo descontar el total de bodegas para {producto.nombre}")
 
-                    # 3️⃣ DESCUENTO EN EL STOCK TOTAL GLOBAL DEL PRODUCTO
                     producto.stock_total -= cantidad_comprada
                     producto.save()
                     

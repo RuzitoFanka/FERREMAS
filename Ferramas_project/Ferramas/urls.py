@@ -7,13 +7,14 @@ from catalogo import views as catalogo_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # 🛒 Páginas Web del Portal (Conectadas a tus funciones reales del views.py)
-    path('', catalogo_views.vista_tienda, name='pantalla-tienda'),  
+    # 🛒 Páginas Web del Portal (CORREGIDO: Ahora coinciden exactamente con tu views.py)
+    path('', catalogo_views.tienda, name='tienda'),  
     
     # 📉 NUEVA RUTA INTEGRADA: Para recibir el carrito y descontar el stock en cascada (Global + Bodegas)
     path('tienda/procesar-pedido/', catalogo_views.procesar_pedido, name='procesar_pedido'),
     
-    path('resumen-orden/', catalogo_views.resumen_orden_view, name='resumen_orden'),
+    # CORREGIDO: Se cambió 'resumen_orden_view' por 'resumen_orden' para que coincida con tu views.py
+    path('resumen-orden/', catalogo_views.resumen_orden, name='resumen_orden'),
     path('procesar-compra/', catalogo_views.procesar_compra_view, name='procesar_compra'),
     path('login/', catalogo_views.login_view, name='login'),
     

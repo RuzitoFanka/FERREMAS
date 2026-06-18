@@ -1,129 +1,101 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediStock Portal – Confirmación de Pedido</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}?v=3.0">
-    <link rel="stylesheet" href="{% static 'resumen.css' %}?v=3.0">
+    <title>Ferramas - Confirmación de Pedido</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
 <body>
 
-    <header class="navbar-confirmacion">
-        <a href="{% url 'pantalla-tienda' %}" class="navbar-brand-confirm">
-            ⚕️ MediStock Portal
-        </a>
+    <header class="navbar" style="background-color: #1a252f; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: sans-serif;">
+        <div class="logo">
+            <a href="{% url 'tienda' %}" style="text-decoration: none; font-weight: bold; font-size: 1.4rem; color: #fff; letter-spacing: 1px;">⚙️ FERRAMAS</a>
+        </div>
+        <nav class="nav-links">
+            <a href="{% url 'tienda' %}" style="margin-right: 20px; text-decoration: none; color: #ecf0f1;">Catálogo</a>
+            <a href="{% url 'resumen_orden' %}" class="active" style="margin-right: 20px; text-decoration: none; color: #3498db; font-weight: bold;">Mi Carrito</a>
+            <a href="{% url 'login' %}" class="btn-login" style="text-decoration: none; background: #e74c3c; color: #fff; padding: 8px 15px; border-radius: 4px; font-weight: bold;">Operadores</a>
+        </nav>
     </header>
 
-    <div class="page-wrapper-center">
+    <main class="container" style="max-width: 800px; margin: 40px auto; padding: 0 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">🛒 Resumen de tu Carrito</h2>
         
-        <div class="resumen-container">
-            <div class="header-orden">
-                <span style="font-size: 26px;">📋</span>
-                <h2>Detalle de los Insumos Solicitados</h2>
-            </div>
-            <p class="subtitulo-orden">Revise su orden de requerimiento antes del despacho final de almacén.</p>
-
-            <table class="tabla-resumen">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th style="text-align: center;">Cantidad</th>
-                        <th style="text-align: right;">Precio Unitario</th>
-                        <th style="text-align: right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody id="cuerpoTablaResumen">
-                    <tr id="filaVaciaMensaje">
-                        <td colspan="4" style="text-align: center; color: #64748b; padding: 50px 20px;">
-                            <span class="mensaje-vacio-box" style="font-size: 46px; display: block; margin-bottom: 12px;">📦</span>
-                            <span style="font-weight: 500; font-size: 15px; display: block; color: #94a3b8;">
-                                No se encontraron productos activos registrados en esta orden médica.
-                            </span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;">
-
-            <div class="footer-orden">
-                <a href="{% url 'pantalla-tienda' %}" class="btn-volver">
-                    ← Volver al Catálogo
-                </a>
-                
-                <div class="acciones-derecha">
-                    <div class="total-row-display">
-                        <span class="total-label">Total de la Orden:</span>
-                        <span id="valorTotalOrden">$0</span>
-                    </div>
-                    <button class="btn-confirmar-final" onclick="mostrarModalConfirmacion()">
-                        <span>Confirmar Requerimiento Comercial</span> ✓
-                    </button>
-                </div>
-            </div>
+        <div id="carrito-vacio" style="display: none; background: #f8f9fa; padding: 30px; text-align: center; border-radius: 8px; color: #7f8c8d; margin-top: 20px;">
+            <p style="font-size: 1.2rem;">Tu carrito está vacío actualmente.</p>
+            <a href="{% url 'tienda' %}" style="display: inline-block; margin-top: 15px; background: #3498db; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: bold;">Volver al Catálogo</a>
         </div>
 
-    </div>
-    
+        <div id="tabla-carrito-contenedor" style="margin-top: 20px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: #f1f5f9; color: #475569;">
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Producto</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Precio</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Cantidad</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #cbd5e1;">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="items-carrito">
+                    </tbody>
+            </table>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <h3 style="color: #1e293b;">Total General: <span id="total-general" style="color: #2ecc71; font-size: 1.6rem; margin-left: 10px;">$0</span></h3>
+                <button onclick="vaciarCarrito()" style="background: #94a3b8; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px; margin-top: 15px;">Vaciar Carrito</button>
+                <a href="{% url 'procesar_compra' %}" style="display: inline-block; background: #2ecc71; color: white; text-decoration: none; padding: 12px 25px; border-radius: 4px; font-weight: bold;">Proceder al Pago 🚀</a>
+            </div>
+        </div>
+    </main>
+
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            proyectarProductosDesdeCarrito();
+        document.addEventListener("DOMContentLoaded", function() {
+            renderizarCarrito();
         });
 
-        function proyectarProductosDesdeCarrito() {
-            const tabla = document.getElementById('cuerpoTablaResumen');
-            const displayTotal = document.getElementById('valorTotalOrden');
-            const productosProyectados = JSON.parse(localStorage.getItem('ultimo_pedido')) || [];
+        function renderizarCarrito() {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            let tbody = document.getElementById('items-carrito');
+            let contenedorTabla = document.getElementById('tabla-carrito-contenedor');
+            let contenedorVacio = document.getElementById('carrito-vacio');
+            
+            if (carrito.length === 0) {
+                contenedorTabla.style.display = 'none';
+                contenedorVacio.style.display = 'block';
+                return;
+            }
 
-            if (productosProyectados.length === 0) return;
+            contenedorTabla.style.display = 'block';
+            contenedorVacio.style.display = 'none';
+            tbody.innerHTML = '';
+            let totalAcumulado = 0;
 
-            tabla.innerHTML = "";
-            let sumaFinal = 0;
+            carrito.forEach(item => {
+                let precioUnitario = parseFloat(item.precio) || 0;
+                let subtotal = precioUnitario * item.cantidad;
+                totalAcumulado += subtotal;
 
-            productosProyectados.forEach(item => {
-                const totalPorProducto = item.precio * item.cantidad;
-                sumaFinal += totalPorProducto;
-
-                const fila = document.createElement('tr');
-                fila.innerHTML = `
-                    <td style="font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">${item.nombre}</td>
-                    <td style="text-align: center; font-weight: 700; color: #0284c7; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">
-                        <span style="background: #f0f9ff; padding: 4px 10px; border-radius: 6px;">${item.cantidad}</span>
-                    </td>
-                    <td style="text-align: right; border-bottom: 1px solid #f1f5f9; color: #475569; font-weight: 500; padding: 18px 20px;">$${item.precio.toFixed(0)}</td>
-                    <td style="text-align: right; font-weight: 700; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding: 18px 20px;">$${totalPorProducto.toFixed(0)}</td>
+                let row = `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px; color: #1e293b; font-weight: 500;">${item.nombre}</td>
+                        <td style="padding: 12px; color: #64748b;">$${precioUnitario}</td>
+                        <td style="padding: 12px; color: #1e293b;">${item.cantidad}</td>
+                        <td style="padding: 12px; color: #2ecc71; font-weight: bold;">$${subtotal}</td>
+                    </tr>
                 `;
-                tabla.appendChild(fila);
+                tbody.innerHTML += row;
             });
 
-            if (displayTotal) {
-                displayTotal.innerText = `$${sumaFinal.toFixed(0)}`;
-            }
+            document.getElementById('total-general').innerText = `$${totalAcumulado}`;
         }
 
-        function mostrarModalConfirmacion() {
-            document.getElementById('customConfirmModal').classList.add('active');
-        }
-
-        function cerrarModalConfirmacion() {
-            document.getElementById('customConfirmModal').classList.remove('active');
-        }
-
-        function ejecutarDespachoBodega() {
-            cerrarModalConfirmacion();
-            
-            const toast = document.getElementById('toastNotification');
-            toast.classList.add('active');
-            
-            localStorage.removeItem('ultimo_pedido');
-            
-            setTimeout(() => {
-                toast.classList.remove('active');
-                window.location.href = "{% url 'pantalla-tienda' %}";
-            }, 2200);
+        function vaciarCarrito() {
+            localStorage.removeItem('carrito');
+            renderizarCarrito();
         }
     </script>
+
 </body>
 </html>

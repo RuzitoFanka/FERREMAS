@@ -1,294 +1,96 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediStock Portal - Productos Destacados</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}?v=1.6">
+    <title>Ferramas Portal - Productos Destacados</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
 <body>
-    {% csrf_token %}
 
-    <header class="navbar-custom">
-        <a href="{% url 'pantalla-tienda' %}" class="navbar-brand-link" title="Volver al Inicio">
-            <div class="navbar-brand">⚕️ MediStock Portal</div>
-        </a>
-        
-        <input type="text" id="inputBuscador" class="search-bar" placeholder="¿Qué estás buscando?" onkeyup="filtrarProductosPorTexto()">
-        
-        <div class="top-info-container">
-            <div class="top-info">Módulos de Adquisición Centralizados</div>
-            
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <a href="{% url 'login' %}" class="header-login-btn" style="text-decoration: none; color: #1a202c; font-weight: bold; background: white; padding: 8px 16px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 14px; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;" onmouseover="this.style.backgroundColor='#f7fafc'; this.style.borderColor='#a0aec0';" onmouseout="this.style.backgroundColor='white'; this.style.borderColor='#cbd5e0';">
-                    👤 Iniciar Sesión
-                </a>
-
-                <button class="header-cart-btn" onclick="toggleCartPanel()" title="Ver Carrito de Suministros">
-                    👜 Carrito
-                    <span class="header-cart-badge" id="cartCount">0</span>
-                </button>
-            </div>
+    <header class="navbar" style="background-color: #1a252f; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div class="logo">
+            <a href="{% url 'tienda' %}" style="text-decoration: none; font-weight: bold; font-size: 1.4rem; color: #fff; letter-spacing: 1px;">⚙️ FERRAMAS</a>
         </div>
+        <nav class="nav-links">
+            <a href="{% url 'tienda' %}" class="active" style="margin-right: 20px; text-decoration: none; color: #3498db; font-weight: bold;">Catálogo</a>
+            <a href="{% url 'resumen_orden' %}" style="margin-right: 20px; text-decoration: none; color: #ecf0f1;">Mi Carrito</a>
+            <a href="{% url 'login' %}" class="btn-login" style="text-decoration: none; background: #e74c3c; color: #fff; padding: 8px 15px; border-radius: 4px; font-weight: bold;">Operadores</a>
+        </nav>
     </header>
 
-    <div class="main-container">
-        
-        <aside class="sidebar">
-            <div class="filter-group bio-special">
-                <div class="filter-header" onclick="toggleFiltro(this)">
-                    <span>Bioequivalente</span>
-                    <span class="filter-arrow">▲</span>
-                </div>
-                <div class="filter-content">
-                    <ul class="filter-list">
-                        <li class="filter-option">
-                            <input type="radio" name="bioequivalente" id="bio_si">
-                            <label for="bio_si">Sí</label>
-                        </li>
-                        <li class="filter-option">
-                            <input type="radio" name="bioequivalente" id="bio_no">
-                            <label for="bio_no">No</label>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-header" onclick="toggleFiltro(this)">
-                    <span>Departamento</span>
-                    <span class="filter-arrow">▲</span>
-                </div>
-                <div class="filter-content">
-                    <ul class="filter-list">
-                        <li class="filter-option"><input type="checkbox" id="dep_vit"><label for="dep_vit">Vitaminas y Suplementos</label></li>
-                        <li class="filter-option"><input type="checkbox" id="dep_med"><label for="dep_med">Medicamentos</label></li>
-                        <li class="filter-option"><input type="checkbox" id="dep_sim"><label for="dep_sim">Simi Lovers</label></li>
-                        <li class="filter-option"><input type="checkbox" id="dep_bel"><label for="dep_bel">Belleza</label></li>
-                        <li class="filter-option"><input type="checkbox" id="dep_cui"><label for="dep_cui">Cuidado Personal</label></li>
-                    </ul>
-                </div>
-            </div>
-        </aside>
-
-        <section class="content-products">
-            <div class="content-header">Productos Destacados de Medicinas e Insumos Activos</div>
-            
-            <div class="grid-products" id="contenedorGridProductos">
-                {% for prod in productos %}
-                <div class="product-card" data-nombre="{{ prod.nombre|lower }}">
-                    <div>
-                        <div class="product-img">
-                            {% if prod.imagen %}
-                                <img src="{{ prod.imagen.url }}" alt="{{ prod.nombre }}">
-                            {% else %}
-                                <span style="font-size: 60px;">💊</span>
-                            {% endif %}
-                        </div>
-                        <div class="product-brand">MediStock Corp</div>
-                        <h3 class="product-name" title="{{ prod.nombre }}">{{ prod.nombre }}</h3>
-                    </div>
-
-                    <div>
-                        <div class="price-container">
-                            <div class="price-oferta-row">
-                                <div class="product-price">${{ prod.precio_unitario }}</div>
-                            </div>
-                        </div>
-
-                        <div class="product-sku">
-                            Ref: {{ prod.codigo_producto }} | Stock: {{ prod.stock_total }} un.
-                        </div>
-                        
-                        <div class="product-actions">
-                            <div class="quantity-selector">
-                                <button class="quantity-btn" onclick="cambiarCantidad(this, -1, 99)">-</button>
-                                <input type="text" class="quantity-input" value="1" readonly>
-                                <button class="quantity-btn" onclick="cambiarCantidad(this, 1, 99)">+</button>
-                            </div>
-                            
-                            <button class="btn-buy" style="background-color: #0284c7; color: white;" onclick="agregarAlCarrito('{{ prod.id }}', '{{ prod.nombre }}', '{{ prod.precio_unitario }}', 99, this)">
-                                Agregar 🛒
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="alert-info">No se registran productos en el catálogo comercial actual.</div>
-                {% endfor %}
-            </div>
+    <main class="container" style="max-width: 1200px; margin: 40px auto; padding: 0 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <section class="hero" style="margin-bottom: 40px; border-left: 5px solid #3498db; padding-left: 15px;">
+            <h1 style="color: #2c3e50; margin-bottom: 10px; font-size: 2.2rem;">Catálogo de Insumos y Herramientas</h1>
+            <p style="color: #7f8c8d; font-size: 1.1rem; margin: 0;">Selecciona las herramientas que necesitas y gestiona tu orden de compra de forma inmediata.</p>
         </section>
-    </div>
 
-    <div class="cart-sidebar" id="cartSidebar" style="position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: #ffffff; box-shadow: -2px 0 15px rgba(0,0,0,0.15); transition: right 0.3s ease; z-index: 1000; padding: 0; display: flex; flex-direction: column;">
-        <div class="cart-header" style="display: flex; justify-content: space-between; align-items: center; color: white; background-color: #0284c7; padding: 20px;">
-            <h3 style="margin: 0; font-weight: bold; font-size: 18px;">Pedido de Suministros</h3>
-            <button class="close-cart" onclick="toggleCartPanel()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; font-weight: bold;">×</button>
-        </div>
-        
-        <ul class="cart-items-list" id="cartItemsContainer" style="list-style: none; padding: 0 20px; margin: 20px 0 0 0; flex-grow: 1; overflow-y: auto;">
-        </ul>
+        <div class="productos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px;">
+            {% for producto in productos %}
+            <div class="producto-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; background: #fff;">
+                <div>
+                    {% if producto.imagen %}
+                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="producto-img" style="max-width: 100%; height: 180px; object-fit: contain; display: block; margin: 0 auto 15px auto; border-radius: 4px;">
+                    {% else %}
+                        <div class="no-img" style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 6px; color: #94a3b8; font-weight: 500; border: 1px dashed #cbd5e1; margin-bottom: 15px;">📦 Sin Imagen</div>
+                    {% endif %}
+                    
+                    <div class="producto-info">
+                        <h3 style="margin: 0 0 12px 0; font-size: 1.2rem; color: #1e293b; font-weight: 600; line-height: 1.4;">{{ producto.nombre }}</h3>
+                        <p class="sku" style="font-size: 0.85rem; color: #64748b; margin: 6px 0; background: #f1f5f9; display: inline-block; padding: 2px 8px; border-radius: 4px;">Código: <code>{{ producto.codigo_producto }}</code></p>
+                        
+                        <p class="precio" style="font-size: 1.4rem; font-weight: 700; color: #2ecc71; margin: 15px 0 10px 0;">
+                            ${{ producto.precio|default:"0" }}
+                        </p>
+                        
+                        {% if producto.stock_total > 0 %}
+                            <p class="stock disponible" style="color: #2ecc71; font-size: 0.9rem; font-weight: 500; margin-bottom: 15px;">🟢 Disponible: {{ producto.stock_total }} un.</p>
+                        {% else %}
+                            <p class="stock sin-stock" style="color: #e74c3c; font-size: 0.9rem; font-weight: 500; margin-bottom: 15px;">🔴 Agotado temporalmente</p>
+                        {% endif %}
+                    </div>
+                </div>
 
-        <div class="cart-footer" style="background-color: #f8fafc; padding: 20px; color: #0f172a; border-top: 1px solid #e2e8f0;">
-            <div class="cart-total-row" style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 15px; font-weight: bold;">
-                <span>Monto Total:</span>
-                <span id="cartTotalVal" style="color: #0284c7;">$0</span>
+                <div style="margin-top: auto;">
+                    {% if producto.stock_total > 0 %}
+                        <button class="btn-agregar" onclick="agregarAlCarrito('{{ producto.id }}', '{{ producto.nombre }}', '{{ producto.precio|default:0 }}')" style="width: 100%; background: #3498db; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            Añadir al Carrito
+                        </button>
+                    {% else %}
+                        <button class="btn-agregar disabled" disabled style="width: 100%; background: #cbd5e1; color: #64748b; border: none; padding: 12px; border-radius: 5px; cursor: not-allowed; font-weight: bold; font-size: 1rem;">
+                            Sin Stock
+                        </button>
+                    {% endif %}
+                </div>
             </div>
-            <button class="btn-checkout" onclick="procesarCompraCarrito()" style="width: 100%; padding: 14px; background: #22c55e; border: none; color: white; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#16a34a'" onmouseout="this.style.backgroundColor='#22c55e'">Generar Orden de Compra</button>
+            {% empty %}
+            <p class="no-productos" style="grid-column: 1/-1; text-align: center; color: #64748b; font-size: 1.1rem; background: #f8f9fa; padding: 40px; border-radius: 8px;">No hay productos disponibles en este momento en el catálogo de Ferramas.</p>
+            {% endfor %}
         </div>
-    </div>
+    </main>
 
     <script>
-        let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+        function agregarAlCarrito(id, nombre, precio) {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            let itemExistente = carrito.find(item => item.id === id);
 
-        document.addEventListener("DOMContentLoaded", () => {
-            actualizarInterfazCarrito();
-        });
-
-        // 🛠️ LÓGICA DEL BUSCADOR EN TIEMPO REAL
-        function filtrarProductosPorTexto() {
-            const textoBusqueda = document.getElementById('inputBuscador').value.toLowerCase().trim();
-            const tarjetas = document.querySelectorAll('.product-card');
-
-            tarjetas.forEach(tarjeta => {
-                const nombreProducto = tarjeta.getAttribute('data-nombre');
-                if (nombreProducto.includes(textoBusqueda)) {
-                    tarjeta.style.display = ""; // Muestra la tarjeta si coincide
-                } else {
-                    tarjeta.style.display = "none"; // Oculta la tarjeta si no coincide
-                }
-            });
-        }
-
-        function toggleCartPanel() {
-            const sidebar = document.getElementById('cartSidebar');
-            if (sidebar) {
-                sidebar.style.right = (sidebar.style.right === "0px") ? "-400px" : "0px";
-            }
-        }
-
-        function cambiarCantidad(btn, cambio, stockMaximo) {
-            const contenedor = btn.parentElement;
-            const input = contenedor.querySelector('.quantity-input');
-            let valorActual = parseInt(input.value) + cambio;
-            if (valorActual < 1) valorActual = 1;
-            if (valorActual > stockMaximo) {
-                alert(`Atención: Solo quedan ${stockMaximo} unidades disponibles.`);
-                valorActual = stockMaximo;
-            }
-            input.value = valorActual;
-        }
-
-        function agregarAlCarrito(id, nombre, precio, stockMaximo, boton) {
-            if (stockMaximo <= 0) return;
-            const card = boton.closest('.product-card');
-            const cantidadInput = card.querySelector('.quantity-input');
-            const cantidad = parseInt(cantidadInput ? cantidadInput.value : 1);
-
-            const existe = carrito.find(item => item.id === id);
-            const cantidadEnCarrito = existe ? existe.cantidad : 0;
-
-            if (cantidadEnCarrito + cantidad > stockMaximo) {
-                alert(`Error: El stock máximo en bodegas es de ${stockMaximo} un.`);
-                return;
-            }
-
-            if (existe) {
-                existe.cantidad += cantidad;
+            if (itemExistente) {
+                itemExistente.cantidad += 1;
             } else {
-                let precioLimpio = parseFloat(String(precio).replace(',', '.'));
-                carrito.push({ id, nombre, precio: precioLimpio, cantidad });
-            }
-            if(cantidadInput) cantidadInput.value = 1;
-            actualizarInterfazCarrito();
-            localStorage.setItem('carrito', JSON.stringify(carrito));
-        }
-
-        function actualizarInterfazCarrito() {
-            const contenedorItems = document.getElementById('cartItemsContainer');
-            const badgeContador = document.getElementById('cartCount');
-            const totalSuma = document.getElementById('cartTotalVal');
-            if (!contenedorItems) return;
-            
-            contenedorItems.innerHTML = '';
-            let unidadesTotales = 0;
-            let costoTotal = 0;
-
-            carrito.forEach((item, index) => {
-                unidadesTotales += item.cantidad;
-                costoTotal += (item.precio * item.cantidad);
-                
-                const li = document.createElement('li');
-                li.style.padding = "12px 0";
-                li.style.borderBottom = "1px solid #e2e8f0";
-                li.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; font-size: 14px; align-items: center; gap: 10px;">
-                        <span style="flex-grow: 1;">
-                            <strong>${item.nombre}</strong><br>
-                            <small style="color: #64748b;">Cant: ${item.cantidad}</small>
-                        </span>
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span style="font-weight: bold; color: #0f172a;">$${(item.precio * item.cantidad).toFixed(0)}</span>
-                            <button onclick="quitarDelCarritoLateral(${index})" style="background: none; border: none; color: #ef4444; font-size: 20px; font-weight: bold; cursor: pointer; padding: 0 5px; line-height: 1;" title="Quitar este insumo">
-                                ×
-                            </button>
-                        </div>
-                    </div>`;
-                contenedorItems.appendChild(li);
-            });
-            
-            if (badgeContador) badgeContador.innerText = unidadesTotales;
-            if (totalSuma) totalSuma.innerText = `$${costoTotal.toFixed(0)}`;
-        }
-
-        function quitarDelCarritoLateral(index) {
-            carrito.splice(index, 1);
-            localStorage.setItem('carrito', JSON.stringify(carrito));
-            actualizarInterfazCarrito();
-        }
-
-        function procesarCompraCarrito() {
-            if (carrito.length === 0) {
-                alert("El carrito está vacío.");
-                return;
+                carrito.push({
+                    id: id,
+                    nombre: nombre,
+                    precio: parseFloat(precio) || 0,
+                    text_precio: precio,
+                    cantidad: 1
+                });
             }
 
-            const ordenAPreparar = [...carrito];
-            localStorage.setItem('ultimo_pedido', JSON.stringify(ordenAPreparar));
-
-            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-            fetch("{% url 'procesar_pedido' %}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": csrftoken
-                },
-                body: JSON.stringify({ items: ordenAPreparar })
-            })
-            .then(response => response.json().then(data => ({ status: response.status, body: data })))
-            .then(res => {
-                if (res.status === 200) {
-                    localStorage.removeItem('carrito');
-                    carrito = [];
-                    actualizarInterfazCarrito();
-                    
-                    window.location.href = "{% url 'resumen_orden' %}"; 
-                } else {
-                    alert("Error en el pedido: " + res.body.error);
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Hubo un problema de red al comunicar con los módulos de adquisición.");
-            });
-        }
-
-        function toggleFiltro(elemento) {
-            const contenido = elemento.nextElementSibling;
-            contenido.style.display = (contenido.style.display === "none" || contenido.style.display === "") ? "block" : "none";
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            alert(`${nombre} fue añadido al carrito de Ferramas.`);
         }
     </script>
+
 </body>
 </html>
